@@ -1,0 +1,208 @@
+/* ============================================
+   DFU Clinical Assessment System - Custom CSS
+   ============================================ */
+
+/* === Shared Animations === */
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+.animation-delay-150 {
+  animation-delay: 150ms;
+}
+
+/* === Mobile: Camera Animations === */
+
+@keyframes scan {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+@keyframes flash {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+  50% { box-shadow: 0 0 40px rgba(16, 185, 129, 0.7); }
+}
+
+@keyframes pingRing {
+  75%, 100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.animate-scan {
+  animation: scan 2s ease-in-out infinite;
+}
+
+.animate-flash {
+  animation: flash 150ms ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+.animate-ping-ring {
+  animation: pingRing 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@keyframes dash {
+  to { stroke-dashoffset: 0; }
+}
+
+.animate-dash {
+  animation: dash 2s linear infinite;
+}
+
+/* === Mobile: Thermal Map Overlay === */
+
+.thermal-overlay {
+  mix-blend-mode: screen;
+  opacity: 0.8;
+}
+
+/* === Mobile: Hide Scrollbar for Tab Bar === */
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* === PC: Analysis Page Slider Styling === */
+
+.analysis-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  background: #334155;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+}
+
+.analysis-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid #1e40af;
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.5);
+}
+
+.analysis-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  cursor: pointer;
+  border: 2px solid #1e40af;
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.5);
+}
+
+.analysis-slider.green::-webkit-slider-thumb {
+  background: #22c55e;
+  border-color: #15803d;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+}
+
+.analysis-slider.green::-moz-range-thumb {
+  background: #22c55e;
+  border-color: #15803d;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+}
+
+.analysis-slider.purple::-webkit-slider-thumb {
+  background: #a855f7;
+  border-color: #7e22ce;
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.5);
+}
+
+.analysis-slider.purple::-moz-range-thumb {
+  background: #a855f7;
+  border-color: #7e22ce;
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.5);
+}
+
+/* === PC: Sidebar Transition === */
+
+#analysis-sidebar {
+  transition: width 300ms ease-in-out,
+              padding 300ms ease-in-out,
+              opacity 300ms ease-in-out;
+}
+
+/* === PC: Dropdown Animation === */
+
+@keyframes analysisDropIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.analysis-dropdown {
+  animation: analysisDropIn 200ms ease-out;
+}
+
+/* === PC: Dark Scrollbar === */
+
+#analysis-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+#analysis-sidebar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 2px;
+}
+
+/* === Global: Base Styles === */
+
+html, body {
+  height: 100%;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+[data-screen] {
+  transition: opacity 0.2s ease;
+}
+
+/* Fix iOS input zoom */
+input[type="text"],
+input[type="date"],
+select,
+textarea {
+  font-size: 16px !important;
+}
+
+/* Scrollbar styling for annotation modal */
+#annotation-modal::-webkit-scrollbar {
+  width: 4px;
+}
+
+#annotation-modal::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+}

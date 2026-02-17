@@ -1,0 +1,790 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<!-- ==================== CAMERA SCREEN ==================== -->
+<section data-screen="camera" class="flex flex-col h-screen bg-zinc-950 text-white font-sans overflow-hidden select-none">
+
+  <!-- Status Bar -->
+  <div class="flex justify-between items-center px-6 py-2 bg-black/40 backdrop-blur-md z-50 absolute top-0 w-full text-xs font-medium tracking-wide">
+    <div class="flex items-center gap-2">
+      <span>09:41</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <i data-lucide="wifi" class="w-4 h-4"></i>
+      <i data-lucide="battery" class="w-4 h-4"></i>
+    </div>
+  </div>
+
+  <!-- Camera Viewport -->
+  <div id="camera-viewport" class="relative flex-1 bg-black overflow-hidden cursor-crosshair">
+
+    <!-- Camera Feed -->
+    <div class="absolute inset-0 flex items-center justify-center">
+      <video id="camera-video" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
+      <canvas id="camera-canvas" class="hidden"></canvas>
+      <div class="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30 pointer-events-none"></div>
+    </div>
+
+    <!-- AI Overlay -->
+    <div class="absolute inset-0 flex flex-col justify-between p-6 z-20 pointer-events-none">
+
+      <!-- Top Header -->
+      <div class="mt-12 flex justify-between items-start">
+        <div class="flex flex-col gap-1">
+          <div id="ai-status-label" class="flex items-center gap-2 text-emerald-400">
+            <i data-lucide="activity" class="w-5 h-5 animate-pulse"></i>
+            <span class="font-bold tracking-wider text-sm drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]">VGG19-Lite 偵測中</span>
+          </div>
+          <div id="ai-mode-badge" class="px-2 py-0.5 bg-black/70 rounded text-[10px] text-zinc-300 backdrop-blur-sm border border-white/20 w-fit shadow-lg">
+            AI 多模態分析系統
+          </div>
+        </div>
+
+        <div id="qa-badge" class="px-3 py-1.5 rounded-lg backdrop-blur-md border bg-zinc-900/70 border-zinc-600 transition-all duration-300 shadow-lg">
+          <span class="text-xs font-bold text-zinc-300">QA: 掃描中...</span>
+        </div>
+      </div>
+
+      <!-- AI Mode: Detection Box Area -->
+      <div id="ai-detection-area" class="relative w-full h-full flex items-center justify-center">
+        <div id="detection-box" class="relative transition-all duration-500 ease-out flex items-center justify-center w-72 h-80 border-2 border-white/40 bg-white/5 rounded-sm">
+
+          <!-- Corner Markers -->
+          <div class="absolute w-8 h-8 -top-1.5 -left-1.5 border-t-[5px] border-l-[5px] border-white/60 transition-all duration-300" id="corner-tl"></div>
+          <div class="absolute w-8 h-8 -top-1.5 -right-1.5 border-t-[5px] border-r-[5px] border-white/60 transition-all duration-300" id="corner-tr"></div>
+          <div class="absolute w-8 h-8 -bottom-1.5 -left-1.5 border-b-[5px] border-l-[5px] border-white/60 transition-all duration-300" id="corner-bl"></div>
+          <div class="absolute w-8 h-8 -bottom-1.5 -right-1.5 border-b-[5px] border-r-[5px] border-white/60 transition-all duration-300" id="corner-br"></div>
+
+          <!-- Scanning Line (hidden when locked) -->
+          <div id="scan-line" class="absolute top-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent shadow-[0_0_20px_rgba(96,165,250,1)] animate-scan"></div>
+
+          <!-- Locked State Elements (hidden when unlocked) -->
+          <div id="lock-label" class="hidden absolute -top-14 left-1/2 -translate-x-1/2 whitespace-nowrap">
+            <div class="bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm font-bold flex flex-col items-center shadow-lg shadow-emerald-500/20">
+              <div class="flex items-center gap-2">
+                <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                影像特徵辨識完成
+              </div>
+              <div id="lock-confidence-text" class="text-[10px] opacity-90 mt-0.5">模型信心分數: 98.7%</div>
+            </div>
+          </div>
+
+          <div id="lock-grid" class="hidden absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-25 pointer-events-none">
+            <div class="border-r border-b border-emerald-400"></div>
+            <div class="border-r border-b border-emerald-400"></div>
+            <div class="border-b border-emerald-400"></div>
+            <div class="border-r border-b border-emerald-400"></div>
+            <div class="border-r border-b border-emerald-400"></div>
+            <div class="border-b border-emerald-400"></div>
+            <div class="border-r border-emerald-400"></div>
+            <div class="border-r border-emerald-400"></div>
+            <div></div>
+          </div>
+
+          <div id="lock-crosshair" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+            <div class="w-4 h-4 border-2 border-emerald-400 rotate-45 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-1 bg-emerald-400 rounded-full"></div>
+          </div>
+
+          <div id="lock-ready-text" class="hidden absolute -bottom-9 w-full text-center">
+            <p class="text-xs text-emerald-300 font-semibold tracking-wide drop-shadow-[0_2px_8px_rgba(0,0,0,1)] bg-black/50 backdrop-blur-sm px-3 py-1 rounded-full inline-block border border-emerald-500/30">
+              準備完成 · 按下快門進行完整分析
+            </p>
+          </div>
+        </div>
+
+        <!-- Guide Text (below detection box, visible when unlocked) -->
+        <div id="guide-area-ai" class="absolute bottom-8 left-1/2 -translate-x-1/2 text-center pointer-events-none w-full">
+          <div class="flex flex-col items-center gap-3">
+            <div class="bg-black/70 backdrop-blur-md px-5 py-3 rounded-xl border border-white/30 shadow-2xl">
+              <p class="text-white font-semibold drop-shadow-md tracking-wide text-base">請將傷口置於框內</p>
+              <p class="text-xs text-zinc-300 mt-1.5">輕觸螢幕以鎖定焦點</p>
+            </div>
+            <div class="flex items-center gap-3 text-sm bg-black/60 backdrop-blur-sm px-4 py-2 rounded-full border border-white/20">
+              <span class="text-zinc-400 font-medium">信心度</span>
+              <div class="w-32 h-2 bg-zinc-700 rounded-full overflow-hidden shadow-inner">
+                <div id="confidence-bar" class="h-full bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-300 shadow-[0_0_8px_rgba(96,165,250,0.8)]" style="width: 0%"></div>
+              </div>
+              <span id="confidence-text" class="font-mono font-bold text-white min-w-[3rem] text-right">0%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Manual Mode Guide (hidden by default) -->
+      <div id="guide-area-manual" class="hidden relative w-full h-full flex items-center justify-center">
+        <div class="absolute mt-16 text-center pointer-events-none">
+          <div class="bg-black/70 backdrop-blur-md px-5 py-3 rounded-xl border border-white/30 shadow-2xl">
+            <p class="text-white font-semibold drop-shadow-md tracking-wide text-base">手動拍攝模式</p>
+            <p class="text-xs text-zinc-300 mt-1.5">隨時按下快門擷取高解析度影像</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Controls -->
+      <div class="pb-20 flex flex-col items-center gap-8 z-30 pointer-events-auto bg-gradient-to-t from-black to-transparent">
+
+        <!-- Mode Selector (pill style) -->
+        <div class="flex bg-zinc-900/80 p-1 rounded-full text-xs border border-white/5">
+          <button id="btn-mode-ai" class="px-8 py-2 bg-zinc-800 rounded-full text-white font-bold shadow-inner transition-all">AI 分析</button>
+          <button id="btn-mode-manual" class="px-8 py-2 text-zinc-500 transition-all">手動拍攝</button>
+        </div>
+
+        <div class="flex items-center justify-around w-full max-w-sm px-6">
+          <!-- Flash Button -->
+          <button id="btn-flash" class="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center border border-zinc-800 active:scale-90 transition-all duration-200">
+            <i data-lucide="zap" class="w-5 h-5 text-white"></i>
+          </button>
+
+          <!-- Shutter Button -->
+          <button id="btn-capture" class="relative w-20 h-20 rounded-full border-4 border-white/25 flex items-center justify-center cursor-not-allowed transition-all duration-300 opacity-60 bg-white p-1.5">
+            <div id="shutter-inner" class="w-full h-full rounded-full border-4 border-zinc-200 bg-white/40 scale-90 transition-all duration-300"></div>
+            <div id="shutter-ping" class="hidden absolute inset-0 rounded-full bg-emerald-400 animate-ping-ring opacity-30"></div>
+          </button>
+
+          <!-- Gallery Button -->
+          <button id="btn-gallery" class="w-12 h-12 rounded-full bg-zinc-900 flex items-center justify-center border border-zinc-800 active:scale-90 transition-all duration-200">
+            <i data-lucide="scan-line" class="w-5 h-5 text-white"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Disclaimer Bar -->
+    <div class="absolute bottom-0 w-full z-50 flex items-center gap-2 justify-center py-2 px-4 bg-zinc-800/80 backdrop-blur-sm border-t border-white/5">
+      <i data-lucide="info" class="w-3 h-3 text-zinc-400 shrink-0"></i>
+      <p class="text-[10px] text-zinc-400 font-medium">畫面為模擬測試影像，非臨床病患資料。</p>
+    </div>
+
+    <!-- Flash Overlay -->
+    <div id="flash-overlay" class="hidden absolute inset-0 bg-white z-[100]"></div>
+
+    <!-- Processing Overlay -->
+    <div id="processing-overlay" class="hidden absolute inset-0 bg-black z-40 flex flex-col items-center justify-center text-white p-6">
+
+      <!-- SVG Progress Ring -->
+      <div class="relative mb-12">
+        <div class="absolute -inset-4 border border-emerald-500/10 rounded-full animate-ping"></div>
+        <svg class="w-48 h-48 transform -rotate-90">
+          <circle cx="96" cy="96" r="80" stroke="rgba(255,255,255,0.05)" stroke-width="8" fill="transparent" />
+          <circle id="progress-ring" cx="96" cy="96" r="80" stroke="#10b981" stroke-width="8" fill="transparent"
+            stroke-dasharray="502" stroke-dashoffset="502" stroke-linecap="round"
+            class="transition-all duration-100" />
+        </svg>
+        <!-- Center heartbeat -->
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-zinc-900 rounded-full border border-zinc-800 flex items-center justify-center shadow-2xl overflow-hidden">
+          <div class="absolute inset-0 bg-emerald-500/10 animate-pulse"></div>
+          <svg width="60" height="40" viewBox="0 0 60 40" fill="none">
+            <path d="M0 20H15L20 5L30 35L35 20H60" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+              class="animate-dash" style="stroke-dasharray: 100; stroke-dashoffset: 100;" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- Title -->
+      <div class="text-center mb-10">
+        <h1 class="text-3xl font-bold tracking-widest mb-3">影像特徵分析中</h1>
+        <p class="text-gray-500 text-sm">正在生成虛擬感測數據與研究分析報告...</p>
+        <p class="text-gray-500 text-sm">僅呈現模型運算流程，不涉及人體醫療判讀。</p>
+      </div>
+
+      <!-- Step Cards -->
+      <div class="w-full max-w-sm bg-zinc-900/50 backdrop-blur-md rounded-3xl p-6 border border-zinc-800/50">
+        <div class="space-y-5">
+          <div data-proc-step="0" class="flex items-center gap-4">
+            <div class="proc-icon shrink-0">
+              <i data-lucide="circle" class="w-6 h-6 text-zinc-700"></i>
+            </div>
+            <div class="flex flex-col">
+              <span class="proc-label text-lg text-zinc-500">RGB 影像品質驗證</span>
+            </div>
+          </div>
+          <div data-proc-step="1" class="flex items-center gap-4">
+            <div class="proc-icon shrink-0">
+              <i data-lucide="circle" class="w-6 h-6 text-zinc-700"></i>
+            </div>
+            <div class="flex flex-col">
+              <span class="proc-label text-lg text-zinc-500">影像特徵視覺化</span>
+              <span class="text-xs text-zinc-500 font-mono">(Generative AI)</span>
+            </div>
+          </div>
+          <div data-proc-step="2" class="flex items-center gap-4">
+            <div class="proc-icon shrink-0">
+              <i data-lucide="circle" class="w-6 h-6 text-zinc-700"></i>
+            </div>
+            <div class="flex flex-col">
+              <span class="proc-label text-lg text-zinc-500">影像外觀分類分析</span>
+              <span class="text-xs text-zinc-500 font-mono">(VGG19)</span>
+            </div>
+          </div>
+          <div data-proc-step="3" class="flex items-center gap-4">
+            <div class="proc-icon shrink-0">
+              <i data-lucide="circle" class="w-6 h-6 text-zinc-700"></i>
+            </div>
+            <div class="flex flex-col">
+              <span class="proc-label text-lg text-zinc-500">生成研究分析報告</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ==================== REPORT SCREEN (研究影像分析結果) ==================== -->
+<section data-screen="report" class="hidden flex-col h-screen bg-zinc-50 text-zinc-900 overflow-hidden font-sans">
+
+  <!-- 1. Header -->
+  <div class="shrink-0 bg-gradient-to-br from-blue-700 to-indigo-600 p-6 pt-12 text-white relative">
+    <div class="flex justify-between items-end">
+      <div>
+        <h1 class="text-2xl font-bold mb-1 tracking-tight">研究影像分析結果</h1>
+        <p class="text-sm opacity-80 font-light">Research Image Analysis Report</p>
+        <p class="text-[10px] mt-4 opacity-60 font-mono tracking-tighter">
+          <span id="report-patient-id">ID: P-20260215-001</span> &bull; <span id="report-date">Today, 09:30 AM</span>
+        </p>
+      </div>
+      <div class="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center border border-white/20">
+        <i data-lucide="user" class="w-6 h-6 text-white"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Warning Banner -->
+  <div class="shrink-0 bg-orange-50/80 border-y border-orange-100 px-5 py-2.5 flex items-center gap-3">
+    <i data-lucide="alert-triangle" class="w-4 h-4 text-orange-500 shrink-0"></i>
+    <p class="text-[10px] text-orange-800 font-bold leading-tight">
+      本系統僅供研究資料分析使用，非醫療診斷工具，其結果不作為醫療判斷依據。
+    </p>
+  </div>
+
+  <!-- Scrollable Content -->
+  <div class="flex-1 overflow-y-auto">
+
+    <!-- 3. Process Flow -->
+    <div class="p-5">
+      <div class="bg-white rounded-[1.5rem] shadow-sm border border-zinc-100 p-6 flex justify-between items-center">
+        <div class="flex flex-col items-center gap-2.5">
+          <div class="w-14 h-14 bg-blue-50/50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100/50">
+            <i data-lucide="camera" class="w-7 h-7"></i>
+          </div>
+          <span class="text-[10px] text-zinc-500 font-bold">RGB 影像</span>
+        </div>
+        <div class="text-zinc-200 text-xl font-thin">&rsaquo;</div>
+        <div class="flex flex-col items-center gap-2.5">
+          <div class="w-14 h-14 bg-blue-50/50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100/50">
+            <i data-lucide="cpu" class="w-7 h-7"></i>
+          </div>
+          <span class="text-[10px] text-zinc-500 font-bold">擬高光譜</span>
+        </div>
+        <div class="text-zinc-200 text-xl font-thin">&rsaquo;</div>
+        <div class="flex flex-col items-center gap-2.5">
+          <div class="w-14 h-14 bg-blue-50/50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100/50">
+            <i data-lucide="search" class="w-7 h-7"></i>
+          </div>
+          <span class="text-[10px] text-zinc-500 font-bold">特徵萃取</span>
+        </div>
+        <div class="text-zinc-200 text-xl font-thin">&rsaquo;</div>
+        <div class="flex flex-col items-center gap-2.5">
+          <div class="w-14 h-14 bg-blue-50/50 text-blue-600 rounded-2xl flex items-center justify-center border border-blue-100/50">
+            <i data-lucide="activity" class="w-7 h-7"></i>
+          </div>
+          <span class="text-[10px] text-zinc-500 font-bold">結果分析</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Analysis Result -->
+    <div class="px-5 mb-5">
+      <div class="bg-white rounded-[1.5rem] shadow-sm border border-zinc-100 px-5 py-4 flex items-center gap-4">
+        <div class="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center shrink-0">
+          <i data-lucide="alert-triangle" class="w-5 h-5 text-orange-500"></i>
+        </div>
+        <h2 class="text-base font-bold text-zinc-800 tracking-tight">
+          影像辨識結果：影像特徵差異
+        </h2>
+      </div>
+    </div>
+
+    <!-- 5. Key Findings -->
+    <div class="px-5 mb-6">
+      <div class="bg-white rounded-[1.5rem] shadow-sm border border-zinc-100 overflow-hidden">
+        <div class="p-5 bg-zinc-50/50 border-b border-zinc-100 flex items-center gap-2 font-bold text-zinc-700">
+          <i data-lucide="file-text" class="w-4 h-4 text-emerald-500"></i>
+          關鍵發現
+        </div>
+        <div class="p-6 space-y-6">
+          <!-- 影像外觀分類 -->
+          <div class="flex justify-between items-center">
+            <div class="flex items-center gap-4">
+              <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                <i data-lucide="eye" class="w-5 h-5"></i>
+              </div>
+              <span class="font-semibold text-zinc-600">影像外觀分類</span>
+            </div>
+            <span class="bg-orange-50 text-orange-600 px-3 py-1 rounded-lg text-xs font-bold ring-1 ring-orange-100">影像特徵差異</span>
+          </div>
+          <!-- 異常區域標記 -->
+          <div class="flex justify-between items-center">
+            <div class="flex items-center gap-4">
+              <div class="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-xl flex items-center justify-center">
+                <i data-lucide="map" class="w-5 h-5"></i>
+              </div>
+              <span class="font-semibold text-zinc-600">異常區域標記</span>
+            </div>
+            <span class="text-zinc-400 text-sm font-medium">已標示</span>
+          </div>
+          <!-- 顏色特徵變化 -->
+          <div class="flex justify-between items-center">
+            <div class="flex items-center gap-4">
+              <div class="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
+                <i data-lucide="palette" class="w-5 h-5"></i>
+              </div>
+              <span class="font-semibold text-zinc-600">顏色特徵變化</span>
+            </div>
+            <span class="text-zinc-400 text-sm font-medium">觀察到</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. 研究說明 -->
+    <div class="px-5 mb-10">
+      <div class="bg-white rounded-[1.5rem] shadow-sm border border-zinc-100 p-6">
+        <div class="flex items-center gap-2 font-bold text-zinc-700 mb-5">
+          <i data-lucide="activity" class="w-4 h-4 text-blue-500"></i>
+          研究說明
+        </div>
+        <div class="space-y-4">
+          <div class="flex gap-4 p-3 bg-zinc-50 rounded-xl border border-zinc-100">
+            <div class="mt-0.5 text-blue-500 shrink-0">
+              <i data-lucide="clipboard-list" class="w-5 h-5"></i>
+            </div>
+            <p class="text-xs text-zinc-600 leading-relaxed font-medium">
+              研究標記結果：本影像經 AI 分析顯示特徵差異。
+            </p>
+          </div>
+          <div class="flex gap-4 p-3 bg-zinc-50 rounded-xl border border-zinc-100">
+            <div class="mt-0.5 text-zinc-400 shrink-0">
+              <i data-lucide="database" class="w-5 h-5"></i>
+            </div>
+            <p class="text-xs text-zinc-600 leading-relaxed font-medium">
+              供研究紀錄使用：影像已自動存檔於研究資料庫。
+            </p>
+          </div>
+        </div>
+        <div class="mt-8 text-center">
+          <p class="text-[10px] text-zinc-400">本結果僅供研究資料分析，不具醫療判讀意義。</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 7. Bottom Nav -->
+  <div class="shrink-0 bg-white/95 backdrop-blur-xl border-t border-zinc-100 flex justify-around items-center py-4 px-6 shadow-[0_-10px_20px_rgba(0,0,0,0.02)]">
+    <button class="flex flex-col items-center gap-1.5 text-zinc-400">
+      <i data-lucide="home" class="w-6 h-6"></i>
+      <span class="text-[10px] font-bold">首頁</span>
+    </button>
+    <button id="btn-back-camera" class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-xl shadow-blue-200 -mt-10 border-4 border-white active:scale-90 transition-transform">
+      <i data-lucide="camera" class="w-7 h-7"></i>
+    </button>
+    <button class="flex flex-col items-center gap-1.5 text-blue-600">
+      <i data-lucide="file-text" class="w-6 h-6"></i>
+      <span class="text-[10px] font-bold">報告</span>
+    </button>
+  </div>
+
+</section>
+
+<!-- ==================== ANNOTATION MODAL ==================== -->
+<div id="annotation-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 overflow-y-auto hidden">
+  <div class="min-h-screen py-8 px-4">
+    <div class="max-w-md mx-auto bg-white rounded-2xl shadow-2xl">
+      <!-- Modal Header -->
+      <div class="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 rounded-t-2xl">
+        <div class="flex items-center justify-between text-white">
+          <div>
+            <h2 class="text-2xl font-bold mb-1">臨床標註表</h2>
+            <p class="text-blue-100 text-sm">Clinical Annotation Sheet for DFU</p>
+          </div>
+          <button id="btn-close-annotation" class="p-2 hover:bg-white/20 rounded-lg transition">
+            <i data-lucide="x" class="w-6 h-6"></i>
+          </button>
+        </div>
+      </div>
+
+      <form id="annotation-form" class="p-6 space-y-8">
+
+        <!-- A. 基本資料 -->
+        <section class="space-y-4">
+          <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2 border-b pb-2">
+            <i data-lucide="user" class="w-5 h-5 text-blue-600"></i>
+            A. 基本資料
+          </h3>
+          <div class="grid grid-cols-1 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">個案編號</label>
+              <input type="text" id="field-caseId" disabled class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">收案日期</label>
+              <input type="date" id="field-date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">年齡層</label>
+              <select id="field-ageGroup" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="">請選擇</option>
+                <option value="20-40">20-40</option>
+                <option value="41-60">41-60</option>
+                <option value="61-80">61-80</option>
+                <option value=">80">&gt;80</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">性別</label>
+              <div class="flex gap-4">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="gender" value="男" class="w-4 h-4 text-blue-600">
+                  <span class="text-sm">男</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="gender" value="女" class="w-4 h-4 text-blue-600">
+                  <span class="text-sm">女</span>
+                </label>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">糖尿病年資</label>
+              <select id="field-diabetesDuration" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="">請選擇</option>
+                <option value="<5">&lt;5年</option>
+                <option value="5-10">5-10年</option>
+                <option value=">10">&gt;10年</option>
+                <option value="unknown">不清楚</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">HbA1c (最近一次)</label>
+              <select id="field-hba1c" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="">請選擇</option>
+                <option value="<7">&lt;7</option>
+                <option value="7-9">7-9</option>
+                <option value=">9">&gt;9</option>
+                <option value="no-data">無資料</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <!-- B. 傷口位置 -->
+        <section class="space-y-4">
+          <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2 border-b pb-2">
+            <i data-lucide="map-pin" class="w-5 h-5 text-blue-600"></i>
+            B. 傷口位置
+          </h3>
+          <div class="grid grid-cols-2 gap-3" id="location-group">
+            <button type="button" data-location="足趾" class="location-btn p-3 rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-all text-sm">足趾</button>
+            <button type="button" data-location="前足(metatarsal head)" class="location-btn p-3 rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-all text-sm">前足</button>
+            <button type="button" data-location="足底" class="location-btn p-3 rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-all text-sm">足底</button>
+            <button type="button" data-location="足跟" class="location-btn p-3 rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-all text-sm">足跟</button>
+            <button type="button" data-location="足背" class="location-btn p-3 rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-all text-sm">足背</button>
+            <button type="button" data-location="外踝/內踝" class="location-btn p-3 rounded-lg border-2 border-gray-200 hover:border-gray-300 transition-all text-sm">外踝/內踝</button>
+          </div>
+          <input type="hidden" id="field-location" value="">
+        </section>
+
+        <!-- C. 傷口外觀評估 -->
+        <section class="space-y-4">
+          <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2 border-b pb-2">
+            <i data-lucide="eye" class="w-5 h-5 text-blue-600"></i>
+            C. 傷口外觀評估
+          </h3>
+          <div class="grid grid-cols-1 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">紅腫 (Erythema)</label>
+              <select id="field-erythema" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="">請選擇</option>
+                <option value="none">無</option>
+                <option value="<2cm">&lt;2cm</option>
+                <option value=">2cm">&gt;2cm</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">分泌物 (Exudate)</label>
+              <select id="field-exudate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="">請選擇</option>
+                <option value="none">無</option>
+                <option value="minimal">少量</option>
+                <option value="moderate">中等</option>
+                <option value="heavy">大量</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">壞死 (Necrosis)</label>
+              <select id="field-necrosis" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="">請選擇</option>
+                <option value="none">無</option>
+                <option value="dry">黑色痂</option>
+                <option value="wet">濕性壞死</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">肉芽 (Granulation)</label>
+              <select id="field-granulation" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                <option value="">請選擇</option>
+                <option value="0">0%</option>
+                <option value="<50">&lt;50%</option>
+                <option value=">50">&gt;50%</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-6">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="field-edema" class="w-4 h-4 text-blue-600 rounded">
+                <span class="text-sm font-medium">腫脹 (Edema)</span>
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" id="field-odor" class="w-4 h-4 text-blue-600 rounded">
+                <span class="text-sm font-medium">惡臭 (Odor)</span>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <!-- D. 深度判斷 -->
+        <section class="space-y-4">
+          <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2 border-b pb-2">
+            <i data-lucide="ruler" class="w-5 h-5 text-blue-600"></i>
+            D. 深度判斷
+          </h3>
+          <div class="space-y-2">
+            <label class="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 depth-option">
+              <input type="radio" name="depth" value="callus" class="w-4 h-4 text-blue-600">
+              <span class="flex-1 font-medium text-sm">皮膚完整但有胼胝</span>
+              <span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">輕度</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 depth-option">
+              <input type="radio" name="depth" value="superficial" class="w-4 h-4 text-blue-600">
+              <span class="flex-1 font-medium text-sm">表淺潰瘍 (只到表皮/真皮)</span>
+              <span class="text-xs px-2 py-1 rounded-full bg-green-100 text-green-700">輕度</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 depth-option">
+              <input type="radio" name="depth" value="deep" class="w-4 h-4 text-blue-600">
+              <span class="flex-1 font-medium text-sm">深部潰瘍 (可見脂肪)</span>
+              <span class="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-700">中度</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 depth-option">
+              <input type="radio" name="depth" value="tendon" class="w-4 h-4 text-blue-600">
+              <span class="flex-1 font-medium text-sm">可見肌腱</span>
+              <span class="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-700">重度</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 depth-option">
+              <input type="radio" name="depth" value="bone" class="w-4 h-4 text-blue-600">
+              <span class="flex-1 font-medium text-sm">可見骨頭</span>
+              <span class="text-xs px-2 py-1 rounded-full bg-red-100 text-red-700">危急</span>
+            </label>
+          </div>
+        </section>
+
+        <!-- E. 感染判定 -->
+        <section class="space-y-4">
+          <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2 border-b pb-2">
+            <i data-lucide="alert-triangle" class="w-5 h-5 text-blue-600"></i>
+            E. 感染判定 (任兩項即判定感染)
+          </h3>
+          <div class="grid grid-cols-2 gap-3" id="infection-group">
+            <label class="flex items-center gap-2 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 infection-cb">
+              <input type="checkbox" data-sign="redness" class="w-4 h-4 text-red-600 rounded infection-check">
+              <span class="text-xl">&#128308;</span>
+              <span class="font-medium text-sm">紅</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 infection-cb">
+              <input type="checkbox" data-sign="heat" class="w-4 h-4 text-red-600 rounded infection-check">
+              <span class="text-xl">&#128293;</span>
+              <span class="font-medium text-sm">熱</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 infection-cb">
+              <input type="checkbox" data-sign="swelling" class="w-4 h-4 text-red-600 rounded infection-check">
+              <span class="text-xl">&#128167;</span>
+              <span class="font-medium text-sm">腫</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 infection-cb">
+              <input type="checkbox" data-sign="pain" class="w-4 h-4 text-red-600 rounded infection-check">
+              <span class="text-xl">&#9889;</span>
+              <span class="font-medium text-sm">痛</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 infection-cb">
+              <input type="checkbox" data-sign="pus" class="w-4 h-4 text-red-600 rounded infection-check">
+              <span class="text-xl">&#128993;</span>
+              <span class="font-medium text-sm">膿</span>
+            </label>
+          </div>
+          <div id="infection-result" class="p-4 rounded-lg border-2 border-green-500 bg-green-50">
+            <div class="flex items-center gap-2">
+              <i data-lucide="check-circle" class="w-5 h-5 text-green-600" id="infection-icon"></i>
+              <span id="infection-text" class="font-bold text-green-700">判定結果: 無感染 (0/5 項符合)</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- F. Wagner 分級 -->
+        <section class="space-y-4">
+          <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2 border-b pb-2">
+            <i data-lucide="award" class="w-5 h-5 text-blue-600"></i>
+            F. Wagner 分級
+          </h3>
+          <div class="space-y-2">
+            <label class="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 wagner-option">
+              <input type="radio" name="wagnerGrade" value="0" class="w-4 h-4 text-blue-600">
+              <span class="text-lg font-bold px-2 py-1 rounded bg-green-100 text-green-700">Grade 0</span>
+              <span class="flex-1 text-sm">無潰瘍高風險足</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 wagner-option">
+              <input type="radio" name="wagnerGrade" value="1" class="w-4 h-4 text-blue-600">
+              <span class="text-lg font-bold px-2 py-1 rounded bg-blue-100 text-blue-700">Grade 1</span>
+              <span class="flex-1 text-sm">表淺潰瘍</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 wagner-option">
+              <input type="radio" name="wagnerGrade" value="2" class="w-4 h-4 text-blue-600">
+              <span class="text-lg font-bold px-2 py-1 rounded bg-yellow-100 text-yellow-700">Grade 2</span>
+              <span class="flex-1 text-sm">深部潰瘍</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 wagner-option">
+              <input type="radio" name="wagnerGrade" value="3" class="w-4 h-4 text-blue-600">
+              <span class="text-lg font-bold px-2 py-1 rounded bg-orange-100 text-orange-700">Grade 3</span>
+              <span class="flex-1 text-sm">深部感染/骨髓炎</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 wagner-option">
+              <input type="radio" name="wagnerGrade" value="4" class="w-4 h-4 text-blue-600">
+              <span class="text-lg font-bold px-2 py-1 rounded bg-red-100 text-red-700">Grade 4</span>
+              <span class="flex-1 text-sm">局部壞疽</span>
+            </label>
+            <label class="flex items-center gap-3 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 wagner-option">
+              <input type="radio" name="wagnerGrade" value="5" class="w-4 h-4 text-blue-600">
+              <span class="text-lg font-bold px-2 py-1 rounded bg-red-100 text-red-700">Grade 5</span>
+              <span class="flex-1 text-sm">全足壞疽</span>
+            </label>
+          </div>
+        </section>
+
+        <!-- G. 臨床處置 -->
+        <section class="space-y-4">
+          <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2 border-b pb-2">
+            <i data-lucide="shield" class="w-5 h-5 text-blue-600"></i>
+            G. 臨床處置
+          </h3>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="flex items-center gap-2 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 action-cb">
+              <input type="checkbox" data-action="homecare" class="w-4 h-4 text-blue-600 rounded action-check">
+              <i data-lucide="home" class="w-4 h-4 text-gray-600"></i>
+              <span class="text-sm font-medium">居家照護</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 action-cb">
+              <input type="checkbox" data-action="followup" class="w-4 h-4 text-blue-600 rounded action-check">
+              <i data-lucide="calendar" class="w-4 h-4 text-gray-600"></i>
+              <span class="text-sm font-medium">門診追蹤</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 action-cb">
+              <input type="checkbox" data-action="debridement" class="w-4 h-4 text-blue-600 rounded action-check">
+              <i data-lucide="target" class="w-4 h-4 text-gray-600"></i>
+              <span class="text-sm font-medium">清創</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 action-cb">
+              <input type="checkbox" data-action="antibiotics" class="w-4 h-4 text-blue-600 rounded action-check">
+              <i data-lucide="droplet" class="w-4 h-4 text-gray-600"></i>
+              <span class="text-sm font-medium">抗生素</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 action-cb">
+              <input type="checkbox" data-action="hospitalization" class="w-4 h-4 text-blue-600 rounded action-check">
+              <i data-lucide="heart" class="w-4 h-4 text-gray-600"></i>
+              <span class="text-sm font-medium">住院</span>
+            </label>
+            <label class="flex items-center gap-2 p-3 rounded-lg border-2 border-gray-200 cursor-pointer transition-all hover:border-gray-300 action-cb">
+              <input type="checkbox" data-action="surgery" class="w-4 h-4 text-blue-600 rounded action-check">
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-gray-600"></i>
+              <span class="text-sm font-medium">手術/截肢</span>
+            </label>
+          </div>
+        </section>
+
+        <!-- H. 照片規範檢查 -->
+        <section class="space-y-4">
+          <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2 border-b pb-2">
+            <i data-lucide="camera" class="w-5 h-5 text-blue-600"></i>
+            H. 照片規範檢查
+          </h3>
+          <div class="space-y-2">
+            <label class="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer">
+              <input type="checkbox" data-compliance="distance" class="w-4 h-4 text-blue-600 rounded compliance-check">
+              <span class="text-sm">距離 20-30 cm</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer">
+              <input type="checkbox" data-compliance="perpendicular" class="w-4 h-4 text-blue-600 rounded compliance-check">
+              <span class="text-sm">垂直拍攝</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer">
+              <input type="checkbox" data-compliance="whiteLight" class="w-4 h-4 text-blue-600 rounded compliance-check">
+              <span class="text-sm">使用白光</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer">
+              <input type="checkbox" data-compliance="ruler" class="w-4 h-4 text-blue-600 rounded compliance-check">
+              <span class="text-sm">含比例尺(貼紙或尺)</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer">
+              <input type="checkbox" data-compliance="bothViews" class="w-4 h-4 text-blue-600 rounded compliance-check">
+              <span class="text-sm">一張整體、一張近照</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer">
+              <input type="checkbox" data-compliance="noOintment" class="w-4 h-4 text-blue-600 rounded compliance-check">
+              <span class="text-sm">未塗藥膏</span>
+            </label>
+            <label class="flex items-center gap-2 p-2 rounded hover:bg-gray-50 cursor-pointer">
+              <input type="checkbox" data-compliance="preDebridement" class="w-4 h-4 text-blue-600 rounded compliance-check">
+              <span class="text-sm">清創前拍攝</span>
+            </label>
+          </div>
+          <div class="p-4 bg-gray-50 rounded-lg">
+            <div class="flex items-center justify-between mb-2">
+              <span class="text-sm font-medium text-gray-700">合規率</span>
+              <span id="compliance-rate-text" class="text-lg font-bold text-red-600">0%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+              <div id="compliance-rate-bar" class="h-2 rounded-full transition-all duration-300 bg-red-500" style="width: 0%"></div>
+            </div>
+          </div>
+        </section>
+
+      </form>
+
+      <!-- Footer Actions -->
+      <div class="border-t bg-gray-50 p-6 rounded-b-2xl flex gap-3">
+        <button id="btn-cancel-annotation" class="flex-1 px-6 py-3 border-2 border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-100 transition">
+          取消
+        </button>
+        <button id="btn-save-annotation" class="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-indigo-700 transition flex items-center justify-center gap-2">
+          <i data-lucide="save" class="w-5 h-5"></i>
+          儲存標註
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] hidden">
+  <div class="bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg text-sm font-medium"></div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/gauge.js') }}"></script>
+<script src="{{ url_for('static', filename='js/camera.js') }}"></script>
+<script src="{{ url_for('static', filename='js/processing.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('static', filename='js/annotation.js') }}"></script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% endblock %}

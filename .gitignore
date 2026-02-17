@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment & secrets
+.env
+.env.*
+*.pem
+*.key
+
+# Data (keep directory structure, ignore contents)
+data/annotations/*
+data/exports/*
+data/images/*
+data/reports/*
+!data/**/.gitkeep
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+
+# Debug screenshots
+
+!app/static/**/*.png
+
+#example_code (Sample Code)
+example/
