@@ -41,6 +41,10 @@ var CameraModule = {
     this._lockCrosshair = document.getElementById('lock-crosshair');
     this._lockReadyText = document.getElementById('lock-ready-text');
     this._lockConfidenceText = document.getElementById('lock-confidence-text');
+    this._angleIcon90 = document.getElementById('angle-icon-90');
+    this._angleIcon45 = document.getElementById('angle-icon-45');
+    this._angleProgressFill = document.getElementById('angle-progress-fill');
+    this._angleStepText = document.getElementById('angle-step-text');
     this._corners = [
       document.getElementById('corner-tl'),
       document.getElementById('corner-tr'),
@@ -245,6 +249,7 @@ var CameraModule = {
         if (icon) icon.classList.add('animate-pulse');
       }
     }
+
   },
 
   updateDetectionBoxUI: function(locked) {

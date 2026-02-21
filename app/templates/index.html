@@ -29,6 +29,8 @@
     <!-- AI Overlay -->
     <div class="absolute inset-0 flex flex-col justify-between p-6 z-20 pointer-events-none">
 
+      <!-- Top Header Wrapper -->
+      <div>
       <!-- Top Header -->
       <div class="mt-12 flex justify-between items-start">
         <div class="flex flex-col gap-1">
@@ -41,10 +43,39 @@
           </div>
         </div>
 
-        <div id="qa-badge" class="px-3 py-1.5 rounded-lg backdrop-blur-md border bg-zinc-900/70 border-zinc-600 transition-all duration-300 shadow-lg">
-          <span class="text-xs font-bold text-zinc-300">QA: 掃描中...</span>
+        <div class="flex items-center gap-2">
+          <div id="qa-badge" class="px-3 py-1.5 rounded-lg backdrop-blur-md border bg-zinc-900/70 border-zinc-600 transition-all duration-300 shadow-lg">
+            <span class="text-xs font-bold text-zinc-300">QA: 掃描中...</span>
+          </div>
+          <button id="btn-photo-guide" class="w-9 h-9 rounded-lg backdrop-blur-md border bg-zinc-900/70 border-zinc-600 flex items-center justify-center shadow-lg pointer-events-auto active:scale-90 transition-all duration-200">
+            <i data-lucide="info" class="w-5 h-5 text-white"></i>
+          </button>
         </div>
       </div>
+
+      <!-- Shot Angle Indicator -->
+      <div id="angle-indicator" class="mt-4 flex flex-col items-center gap-2">
+        <!-- Progress -->
+        <div class="flex items-center gap-2">
+          <div class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.6)]"></div>
+          <div class="w-10 h-0.5 bg-zinc-600 rounded-full overflow-hidden">
+            <div id="angle-progress-fill" class="h-full bg-emerald-400 rounded-full transition-all duration-300" style="width:0%"></div>
+          </div>
+          <span id="angle-step-text" class="text-white text-xs font-mono font-bold tracking-wide">0/2</span>
+        </div>
+        <!-- 90° icon (default visible) -->
+        <svg id="angle-icon-90" width="52" height="32" viewBox="0 0 52 32" class="drop-shadow-lg">
+          <line x1="6" y1="5" x2="46" y2="5" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+          <path d="M 6 5 A 20 20 0 0 1 46 5 Z" fill="#3B82F6" fill-opacity="0.85"/>
+        </svg>
+        <!-- 45° icon (hidden) -->
+        <svg id="angle-icon-45" width="52" height="32" viewBox="0 0 52 32" class="hidden drop-shadow-lg" style="transform:rotate(-20deg)">
+          <line x1="6" y1="5" x2="46" y2="5" stroke="white" stroke-width="2.5" stroke-linecap="round" opacity="0.6"/>
+          <path d="M 6 5 A 20 20 0 0 1 46 5 Z" fill="#F59E0B" fill-opacity="0.85"/>
+        </svg>
+        <span id="angle-hint-text" class="text-zinc-400 text-[11px] font-medium tracking-wide">請垂直 90° 俯拍</span>
+      </div>
+      </div><!-- /Top Header Wrapper -->
 
       <!-- AI Mode: Detection Box Area -->
       <div id="ai-detection-area" class="relative w-full h-full flex items-center justify-center">
@@ -231,6 +262,149 @@
     </div>
 
   </div>
+
+<!-- Photo Guide Modal (iOS-style bottom sheet) -->
+<div id="photo-guide-modal" class="absolute inset-0 bg-black/60 z-[60] hidden" style="opacity:0;">
+  <div class="sheet-body absolute bottom-0 left-0 right-0 bg-zinc-950 rounded-t-[2rem] overflow-hidden flex flex-col" style="max-height:92%; transform:translateY(100%);">
+
+    <!-- Drag Handle -->
+    <div class="shrink-0 flex justify-center pt-3 pb-1">
+      <div class="w-10 h-1 rounded-full bg-zinc-600"></div>
+    </div>
+
+    <!-- Nav Bar (iOS style) -->
+    <div class="shrink-0 flex items-center justify-between px-5 pb-3 pt-1">
+      <div class="w-16"></div>
+      <h2 class="text-white font-semibold text-[17px] tracking-tight">拍攝規範</h2>
+      <button id="btn-close-photo-guide" class="w-16 text-right text-blue-400 font-medium text-[15px] active:opacity-50 transition-opacity">完成</button>
+    </div>
+
+    <div class="w-full h-px bg-white/10"></div>
+
+    <!-- Scrollable Content -->
+    <div class="flex-1 overflow-y-auto overscroll-contain">
+
+      <!-- Hero -->
+      <div class="px-6 py-5 bg-gradient-to-b from-blue-600/15 to-transparent">
+        <div class="flex items-center gap-3 mb-2">
+          <div class="w-10 h-10 bg-blue-500/20 rounded-2xl flex items-center justify-center">
+            <i data-lucide="camera" class="w-5 h-5 text-blue-400"></i>
+          </div>
+          <div>
+            <p class="text-white font-bold text-[15px]">DFU 傷口影像拍攝指引</p>
+            <p class="text-zinc-500 text-[11px]">Clinical Photography Protocol</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-5 pb-8 space-y-4">
+
+        <!-- 一、拍攝距離與構圖 -->
+        <div class="rounded-2xl bg-zinc-900/80 overflow-hidden">
+          <div class="flex items-center gap-3 px-4 py-3">
+            <div class="w-8 h-8 bg-blue-500/15 rounded-xl flex items-center justify-center shrink-0">
+              <i data-lucide="ruler" class="w-4 h-4 text-blue-400"></i>
+            </div>
+            <h3 class="text-white font-semibold text-[14px]">拍攝距離與構圖</h3>
+          </div>
+          <div class="mx-4 mb-4 rounded-xl bg-zinc-800/60 divide-y divide-white/5">
+            <div class="flex items-start gap-3 px-4 py-3">
+              <span class="text-[11px] text-blue-400 font-semibold bg-blue-500/10 px-2 py-0.5 rounded-md mt-0.5 shrink-0">距離</span>
+              <p class="text-zinc-300 text-[13px] leading-relaxed">鏡頭距傷口 <span class="text-white font-semibold">20–30 cm</span>，過遠解析度不足、過近易失焦</p>
+            </div>
+            <div class="flex items-start gap-3 px-4 py-3">
+              <span class="text-[11px] text-blue-400 font-semibold bg-blue-500/10 px-2 py-0.5 rounded-md mt-0.5 shrink-0">角度</span>
+              <p class="text-zinc-300 text-[13px] leading-relaxed">主圖 <span class="text-white font-semibold">垂直 90°</span> 俯拍，另補一張 <span class="text-white font-semibold">45° 側視角</span>，用於紀錄傷口深度與邊緣隆起狀態</p>
+            </div>
+            <div class="flex items-start gap-3 px-4 py-3">
+              <span class="text-[11px] text-blue-400 font-semibold bg-blue-500/10 px-2 py-0.5 rounded-md mt-0.5 shrink-0">對焦</span>
+              <p class="text-zinc-300 text-[13px] leading-relaxed">45° 角極易失焦，請務必 <span class="text-white font-semibold">點擊螢幕手動對焦</span></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 二、光源與曝光 -->
+        <div class="rounded-2xl bg-zinc-900/80 overflow-hidden">
+          <div class="flex items-center gap-3 px-4 py-3">
+            <div class="w-8 h-8 bg-yellow-500/15 rounded-xl flex items-center justify-center shrink-0">
+              <i data-lucide="sun" class="w-4 h-4 text-yellow-400"></i>
+            </div>
+            <h3 class="text-white font-semibold text-[14px]">光源與曝光設定</h3>
+          </div>
+          <div class="mx-4 mb-4 rounded-xl bg-zinc-800/60 divide-y divide-white/5">
+            <div class="flex items-start gap-3 px-4 py-3">
+              <span class="text-[11px] text-yellow-400 font-semibold bg-yellow-500/10 px-2 py-0.5 rounded-md mt-0.5 shrink-0">光源</span>
+              <p class="text-zinc-300 text-[13px] leading-relaxed">使用 <span class="text-white font-semibold">白光 LED</span>（色溫 5000–6500K），避開黃光或混光</p>
+            </div>
+            <div class="flex items-start gap-3 px-4 py-3">
+              <span class="text-[11px] text-yellow-400 font-semibold bg-yellow-500/10 px-2 py-0.5 rounded-md mt-0.5 shrink-0">閃光</span>
+              <p class="text-zinc-300 text-[13px] leading-relaxed"><span class="text-white font-semibold">關閉手機閃光燈</span>，避免高光過曝或色偏</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 三、傷口表面處理 -->
+        <div class="rounded-2xl bg-zinc-900/80 overflow-hidden">
+          <div class="flex items-center gap-3 px-4 py-3">
+            <div class="w-8 h-8 bg-emerald-500/15 rounded-xl flex items-center justify-center shrink-0">
+              <i data-lucide="droplets" class="w-4 h-4 text-emerald-400"></i>
+            </div>
+            <h3 class="text-white font-semibold text-[14px]">傷口表面處理</h3>
+          </div>
+          <div class="mx-4 mb-4 rounded-xl bg-zinc-800/60 divide-y divide-white/5">
+            <div class="flex items-start gap-3 px-4 py-3">
+              <span class="text-[11px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md mt-0.5 shrink-0">時機</span>
+              <p class="text-zinc-300 text-[13px] leading-relaxed"><span class="text-white font-semibold">清創前</span>先拍攝，保留原始傷口外觀</p>
+            </div>
+            <div class="flex items-start gap-3 px-4 py-3">
+              <span class="text-[11px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md mt-0.5 shrink-0">藥膏</span>
+              <p class="text-zinc-300 text-[13px] leading-relaxed">以生理食鹽水輕柔拭淨，<span class="text-white font-semibold">不塗任何藥膏</span>或覆蓋物</p>
+            </div>
+            <div class="flex items-start gap-3 px-4 py-3">
+              <span class="text-[11px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md mt-0.5 shrink-0">比例尺</span>
+              <p class="text-zinc-300 text-[13px] leading-relaxed">傷口旁放置 <span class="text-white font-semibold">拋棄式比例尺貼紙</span>，不接觸傷口本體</p>
+            </div>
+            <div class="flex items-start gap-3 px-4 py-3">
+              <span class="text-[11px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md mt-0.5 shrink-0">構圖</span>
+              <p class="text-zinc-300 text-[13px] leading-relaxed">第一張 <span class="text-white font-semibold">垂直 90° 俯拍</span>（含周邊皮膚），第二張 <span class="text-white font-semibold">45° 側視角</span></p>
+            </div>
+            <div class="flex items-start gap-3 px-4 py-3">
+              <span class="text-[11px] text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded-md mt-0.5 shrink-0">對焦</span>
+              <p class="text-zinc-300 text-[13px] leading-relaxed">點擊傷口中心 <span class="text-white font-semibold">鎖定對焦與曝光（AE/AF Lock）</span></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 四、隱私保護 -->
+        <div class="rounded-2xl bg-zinc-900/80 overflow-hidden border border-red-500/20">
+          <div class="flex items-center gap-3 px-4 py-3">
+            <div class="w-8 h-8 bg-red-500/15 rounded-xl flex items-center justify-center shrink-0">
+              <i data-lucide="shield-alert" class="w-4 h-4 text-red-400"></i>
+            </div>
+            <h3 class="text-white font-semibold text-[14px]">去識別化與隱私保護</h3>
+          </div>
+          <div class="mx-4 mb-4 rounded-xl bg-red-950/30 divide-y divide-red-500/10">
+            <div class="flex items-start gap-3 px-4 py-3">
+              <span class="text-[11px] text-red-400 font-semibold bg-red-500/10 px-2 py-0.5 rounded-md mt-0.5 shrink-0">排除</span>
+              <p class="text-zinc-300 text-[13px] leading-relaxed"><span class="text-red-300 font-semibold">不可包含</span>患者臉部、醫院手環、特殊刺青或可辨識背景</p>
+            </div>
+            <div class="flex items-start gap-3 px-4 py-3">
+              <span class="text-[11px] text-red-400 font-semibold bg-red-500/10 px-2 py-0.5 rounded-md mt-0.5 shrink-0">檢查</span>
+              <p class="text-zinc-300 text-[13px] leading-relaxed">拍入個資須 <span class="text-red-300 font-semibold">立即刪除重拍</span>，嚴禁事後裁切</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer note -->
+        <div class="flex items-center justify-center gap-2 pt-2 pb-4">
+          <i data-lucide="info" class="w-3 h-3 text-zinc-600"></i>
+          <p class="text-[11px] text-zinc-600">依據臨床影像標準化作業流程制定</p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
 </section>
 
 <!-- ==================== REPORT SCREEN (研究影像分析結果) ==================== -->
@@ -772,6 +946,7 @@
     </div>
   </div>
 </div>
+
 
 <!-- Toast notification -->
 <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] hidden">

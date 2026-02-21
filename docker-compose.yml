@@ -2,10 +2,12 @@ services:
   web:
     build: .
     ports:
-      - "5000:5000"
+      - "${APP_PORT:-5001}:5000"
     volumes:
       - ./data:/app/data
       - ./app:/app/app
     environment:
       - FLASK_ENV=development
       - DATA_DIR=/app/data
+    env_file:
+      - .env

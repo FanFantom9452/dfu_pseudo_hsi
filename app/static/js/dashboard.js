@@ -31,6 +31,9 @@ var DashboardModule = {
     } else {
       CameraModule.setMode('manual');
     }
+
+    // Update angle indicator
+    updateAngleIndicator();
   },
 
   renderReport: function() {
