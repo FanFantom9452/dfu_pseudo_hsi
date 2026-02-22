@@ -12,8 +12,54 @@ var AppState = {
   isLocked: false,
   confidence: 0,
   isCapturing: false,
-  shotStep: 0
+  shotStep: 0,
+
+  // Upload tracking
+  uploaded90: false,
+  uploaded45: false,
+  uploadErrors: []
 };
+
+// --- Shared image upload function with retry ---
+function uploadImage(caseId, imageData, angle, retries) {
+  if (retries === undefined) retries = 2;
+
+  return fetch('/api/upload-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      caseId: caseId,
+      image: imageData,
+      angle: angle
+    })
+  }).then(function(response) {
+    return response.json();
+  }).then(function(result) {
+    if (result.success) {
+      if (angle === '90') {
+        AppState.uploaded90 = true;
+      } else {
+        AppState.uploaded45 = true;
+      }
+      showToast(angle + '° 照片上傳成功');
+      return result;
+    } else {
+      throw new Error(result.error || '上傳失敗');
+    }
+  }).catch(function(err) {
+    if (retries > 0) {
+      return new Promise(function(resolve) {
+        setTimeout(function() {
+          resolve(uploadImage(caseId, imageData, angle, retries - 1));
+        }, 2000);
+      });
+    } else {
+      AppState.uploadErrors.push(angle + '° 照片: ' + err.message);
+      showToast(angle + '° 照片上傳失敗: ' + err.message, 5000);
+      throw err;
+    }
+  });
+}
 
 function switchScreen(screenName) {
   document.querySelectorAll('[data-screen]').forEach(function(el) {
@@ -91,10 +137,13 @@ function handleCapture() {
   AppState.isCapturing = true;
 
   if (AppState.shotStep === 0) {
-    // --- Shot 1 (90°): flash → stay on camera ---
+    // --- Shot 1 (90°): flash → upload → stay on camera ---
     AppState.capturedImage90 = CameraModule.capture();
 
     CameraModule.triggerFlash(function() {
+      // Immediately upload 90° image
+      uploadImage(AppState.caseId, AppState.capturedImage90, '90');
+
       AppState.shotStep = 1;
       AppState.isCapturing = false;
 
@@ -118,11 +167,14 @@ function handleCapture() {
     });
 
   } else {
-    // --- Shot 2 (45°): flash → processing → report ---
+    // --- Shot 2 (45°): flash → upload → processing → report ---
     AppState.capturedImage = CameraModule.capture();
 
     CameraModule.triggerFlash(function() {
       CameraModule.stopAIScanning();
+
+      // Immediately upload 45° image
+      uploadImage(AppState.caseId, AppState.capturedImage, '45');
 
       ProcessingModule.start(function() {
         AppState.shotStep = 2;

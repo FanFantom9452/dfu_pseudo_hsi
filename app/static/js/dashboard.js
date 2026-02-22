@@ -15,10 +15,41 @@ var DashboardModule = {
   },
 
   handleBackToCamera: function() {
+    // Check if images were uploaded; warn if not
+    if ((AppState.capturedImage || AppState.capturedImage90) &&
+        (!AppState.uploaded90 || !AppState.uploaded45)) {
+      var hasUnuploaded = [];
+      if (!AppState.uploaded90 && AppState.capturedImage90) hasUnuploaded.push('90°');
+      if (!AppState.uploaded45 && AppState.capturedImage) hasUnuploaded.push('45°');
+
+      if (hasUnuploaded.length > 0) {
+        var confirmMsg = hasUnuploaded.join(' 和 ') + ' 照片尚未上傳成功，確定要返回？';
+        if (!confirm(confirmMsg)) return;
+
+        // Try one last upload attempt before leaving
+        if (!AppState.uploaded90 && AppState.capturedImage90) {
+          uploadImage(AppState.caseId, AppState.capturedImage90, '90', 0);
+        }
+        if (!AppState.uploaded45 && AppState.capturedImage) {
+          uploadImage(AppState.caseId, AppState.capturedImage, '45', 0);
+        }
+      }
+    }
+
     ProcessingModule.reset();
+
+    // Clear captured images and upload state
     AppState.capturedImage = null;
+    AppState.capturedImage90 = null;
+    AppState.uploaded90 = false;
+    AppState.uploaded45 = false;
+    AppState.uploadErrors = [];
     AppState.isLocked = false;
     AppState.isCapturing = false;
+    AppState.shotStep = 0;
+
+    // Generate new case ID for next patient
+    AppState.caseId = generateCaseId();
 
     switchScreen('camera');
 

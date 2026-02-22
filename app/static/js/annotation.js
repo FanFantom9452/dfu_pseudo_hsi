@@ -275,14 +275,6 @@ var AnnotationModule = {
           showToast('標註已儲存（' + result.errors.length + ' 個驗證警告）');
         }
 
-        if (AppState.capturedImage) {
-          fetch('/api/upload-image', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ caseId: data.caseId, image: AppState.capturedImage })
-          }).catch(function() {});
-        }
-
         self.close();
       } else {
         showToast('儲存失敗: ' + (result.error || '未知錯誤'));

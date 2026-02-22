@@ -49,11 +49,33 @@ def upload_image():
     if "," in image_data:
         image_data = image_data.split(",", 1)[1]
 
-    image_bytes = base64.b64decode(image_data)
-    image_path = Path(manager.data_dir) / "images" / f"{data['caseId']}.jpg"
+    try:
+        image_bytes = base64.b64decode(image_data)
+    except Exception:
+        return jsonify({"error": "Invalid base64 image data"}), 400
+
+    # Validate file size: reject empty or >10MB
+    if len(image_bytes) == 0:
+        return jsonify({"error": "Image data is empty"}), 400
+    if len(image_bytes) > 10 * 1024 * 1024:
+        return jsonify({"error": "Image too large (max 10MB)"}), 400
+
+    # Build filename with angle suffix: {caseId}_90.jpg / {caseId}_45.jpg
+    angle = data.get("angle", "")
+    if angle in ("90", "45"):
+        filename = f"{data['caseId']}_{angle}.jpg"
+    else:
+        filename = f"{data['caseId']}.jpg"
+
+    image_path = Path(manager.data_dir) / "images" / filename
     image_path.write_bytes(image_bytes)
 
-    return jsonify({"success": True, "path": str(image_path)})
+    return jsonify({
+        "success": True,
+        "path": str(image_path),
+        "filename": filename,
+        "size": len(image_bytes),
+    })
 
 
 @api_bp.route("/statistics", methods=["GET"])
